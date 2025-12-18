@@ -12,7 +12,8 @@ export type {
   EventKind,
   ProxyEventV1,
   ProxyEventV2,
-  RequestOptions,
+  ProxyEventV1WithCognitoAuthorizer,
+  ProxyEventV2WithJWTAuthorizer,
 } from "./core/types.js";
 export type { Request } from "./core/request.js";
 

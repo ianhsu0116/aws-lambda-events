@@ -1,11 +1,11 @@
 import { BaseRequest } from "../core/request.js";
 import { UnsupportedEventError } from "../core/errors.js";
 import { detectEventKind } from "./detect.js";
-import type { ProxyEventV1, RequestOptions } from "../core/types.js";
+import type { ProxyEventV1, ProxyEventV1WithCognitoAuthorizer } from "../core/types.js";
 
-export class RestApiRequest extends BaseRequest<ProxyEventV1> {
-  constructor(event: ProxyEventV1, options?: RequestOptions) {
-    super(event, options);
+export class RestApiRequest extends BaseRequest<ProxyEventV1 | ProxyEventV1WithCognitoAuthorizer> {
+  constructor(event: ProxyEventV1 | ProxyEventV1WithCognitoAuthorizer) {
+    super(event);
     const kind = detectEventKind(event);
     if (kind !== "v1") {
       throw new UnsupportedEventError("Expected payload v1.0 event");
@@ -47,28 +47,14 @@ export class RestApiRequest extends BaseRequest<ProxyEventV1> {
 
   protected getQueryParamValue(key: string): string | undefined {
     const multiValues = this.event.multiValueQueryStringParameters;
-    if (multiValues && multiValues[key] && multiValues[key]!.length > 0) {
-      return multiValues[key]![0];
+    if (multiValues?.[key] && multiValues[key].length > 0) {
+      const last = multiValues[key].at(-1);
+      return last ?? undefined;
     }
 
     const singles = this.event.queryStringParameters ?? undefined;
     if (singles && key in singles) {
       return singles[key] ?? undefined;
-    }
-
-    return undefined;
-  }
-
-  protected getQueryParamValues(key: string): string[] | undefined {
-    const multiValues = this.event.multiValueQueryStringParameters;
-    if (multiValues && multiValues[key]) {
-      return multiValues[key] ?? undefined;
-    }
-
-    const singles = this.event.queryStringParameters ?? undefined;
-    if (singles && key in singles) {
-      const value = singles[key];
-      return value === undefined || value === null ? undefined : [value];
     }
 
     return undefined;

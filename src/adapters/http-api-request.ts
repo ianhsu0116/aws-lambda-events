@@ -1,13 +1,13 @@
 import { BaseRequest } from "../core/request.js";
 import { UnsupportedEventError } from "../core/errors.js";
 import { detectEventKind } from "./detect.js";
-import type { ProxyEventV2, RequestOptions } from "../core/types.js";
+import type { ProxyEventV2, ProxyEventV2WithJWTAuthorizer } from "../core/types.js";
 
-export class HttpApiRequest extends BaseRequest<ProxyEventV2> {
-  private readonly rawQueryMap: Record<string, string[]>;
+export class HttpApiRequest extends BaseRequest<ProxyEventV2 | ProxyEventV2WithJWTAuthorizer> {
+  private readonly rawQueryMap: Record<string, string>;
 
-  constructor(event: ProxyEventV2, options?: RequestOptions) {
-    super(event, options);
+  constructor(event: ProxyEventV2 | ProxyEventV2WithJWTAuthorizer) {
+    super(event);
     const kind = detectEventKind(event);
     if (kind !== "v2") {
       throw new UnsupportedEventError("Expected payload v2.0 event");
@@ -41,47 +41,33 @@ export class HttpApiRequest extends BaseRequest<ProxyEventV2> {
   }
 
   protected getQueryParamValue(key: string): string | undefined {
+    const raw = this.rawQueryMap[key];
+    if (raw !== undefined) {
+      return raw;
+    }
+
     const fromEvent = this.event.queryStringParameters ?? {};
     if (key in fromEvent) {
       return fromEvent[key] ?? undefined;
     }
 
-    const rawValues = this.rawQueryMap[key];
-    if (rawValues && rawValues.length > 0) {
-      return rawValues[0];
-    }
-
     return undefined;
   }
 
-  protected getQueryParamValues(key: string): string[] | undefined {
-    const rawValues = this.rawQueryMap[key];
-    if (rawValues && rawValues.length > 0) {
-      return rawValues;
-    }
-
-    const fromEvent = this.event.queryStringParameters ?? {};
-    if (key in fromEvent) {
-      const value = fromEvent[key];
-      return value === undefined || value === null ? undefined : [value];
-    }
-
-    return undefined;
-  }
-
-  private parseRawQuery(rawQuery: string): Record<string, string[]> {
+  private parseRawQuery(rawQuery: string): Record<string, string> {
     if (!rawQuery) {
       return {};
     }
 
     const params = new URLSearchParams(rawQuery);
-    const map: Record<string, string[]> = {};
+    const map: Record<string, string> = {};
 
-    for (const [key, value] of params.entries()) {
-      if (!map[key]) {
-        map[key] = [];
+    for (const key of params.keys()) {
+      const allValues = params.getAll(key);
+      const last = allValues.at(-1);
+      if (last !== null && last !== undefined) {
+        map[key] = last;
       }
-      map[key].push(value);
     }
 
     return map;

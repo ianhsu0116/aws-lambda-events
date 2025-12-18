@@ -1,5 +1,5 @@
 import { BodyParseError } from "./errors.js";
-import type { AnyProxyEvent, RequestOptions } from "./types.js";
+import type { AnyProxyEvent } from "./types.js";
 
 type ParsedBody =
   | { kind: "empty" }
@@ -7,14 +7,10 @@ type ParsedBody =
   | { kind: "form"; value: Record<string, string | string[]> }
   | { kind: "text"; value: string };
 
-const defaultOptions: Required<RequestOptions> = {
-  formDuplicateKeyMode: "last",
-};
-
 export interface Request {
   getPathParam(key: string, defaultValue?: string): string | undefined;
   getQueryStr(key: string, defaultValue?: string): string | undefined;
-  getQueryStrs(key: string): string[] | undefined;
+  getQueryStrs(keys: string[], defaultValue?: string): Record<string, string | undefined>;
   getInput<T = unknown>(key: string, defaultValue?: T): T | undefined;
   getInputs<T = unknown>(keys: string[], defaultValue?: T): Record<string, T | undefined>;
   getHeader(name: string, defaultValue?: string): string | undefined;
@@ -26,12 +22,10 @@ export interface Request {
 
 export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
   protected readonly event: E;
-  protected readonly options: Required<RequestOptions>;
   private parsedBody?: ParsedBody;
 
-  constructor(event: E, options?: RequestOptions) {
+  constructor(event: E) {
     this.event = event;
-    this.options = { ...defaultOptions, ...options };
   }
 
   abstract getPathParam(key: string, defaultValue?: string): string | undefined;
@@ -41,8 +35,12 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
     return value ?? defaultValue;
   }
 
-  getQueryStrs(key: string): string[] | undefined {
-    return this.getQueryParamValues(key);
+  getQueryStrs(keys: string[], defaultValue?: string): Record<string, string | undefined> {
+    const result: Record<string, string | undefined> = {};
+    for (const key of keys) {
+      result[key] = this.getQueryStr(key, defaultValue);
+    }
+    return result;
   }
 
   getInput<T = unknown>(key: string, defaultValue?: T): T | undefined {
@@ -108,7 +106,6 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
 
   protected abstract headerLookup(normalizedHeaderName: string): string | undefined;
   protected abstract getQueryParamValue(key: string): string | undefined;
-  protected abstract getQueryParamValues(key: string): string[] | undefined;
 
   private ensureParsedBody(): ParsedBody {
     if (this.parsedBody) {
@@ -129,7 +126,8 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
         this.parsedBody = { kind: "json", value: JSON.parse(rawBody) };
         return this.parsedBody;
       } catch (error) {
-        throw new BodyParseError("Invalid JSON body");
+        const message = error instanceof Error ? error.message : "Invalid JSON body";
+        throw new BodyParseError(message);
       }
     }
 
@@ -149,9 +147,8 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
 
     for (const key of params.keys()) {
       const values = params.getAll(key);
-      const lastValue = values[values.length - 1] ?? "";
-      result[key] =
-        this.options.formDuplicateKeyMode === "array" && values.length > 1 ? values : lastValue;
+      const lastValue = values.at(-1) ?? "";
+      result[key] = lastValue;
     }
 
     return result;

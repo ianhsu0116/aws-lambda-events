@@ -83,9 +83,11 @@ describe("query strings", () => {
       queryStringParameters: { search: "single", other: "one" },
     });
     const request = new RestApi.Request(event);
-    expect(request.getQueryStr("search")).toBe("first");
-    expect(request.getQueryStrs("search")).toEqual(["first", "second"]);
-    expect(request.getQueryStr("other")).toBe("one");
+    expect(request.getQueryStr("search")).toBe("second");
+    expect(request.getQueryStrs(["search", "other"])).toEqual({
+      search: "second",
+      other: "one",
+    });
   });
 
   it("reconstructs multi-values from rawQueryString in payload v2.0", () => {
@@ -95,8 +97,11 @@ describe("query strings", () => {
       queryStringParameters: { filter: "one,two", single: "only" },
     });
     const request = new HttpApi.Request(event);
-    expect(request.getQueryStr("filter")).toBe("one,two");
-    expect(request.getQueryStrs("filter")).toEqual(["one", "two"]);
+    expect(request.getQueryStr("filter")).toBe("two");
+    expect(request.getQueryStrs(["filter", "single"])).toEqual({
+      filter: "two",
+      single: "only",
+    });
     expect(request.getQueryStr("single")).toBe("only");
   });
 });
@@ -122,15 +127,15 @@ describe("body parsing", () => {
     expect(() => request.getInput("anything")).toThrow(BodyParseError);
   });
 
-  it("parses form-urlencoded with duplicate keys using array mode", () => {
+  it("parses form-urlencoded and returns last value for duplicate keys", () => {
     const body = "color=red&color=blue&single=one";
     const event = makeHttpEvent({
       headers: { "content-type": "application/x-www-form-urlencoded" },
       rawQueryString: "",
       body,
     });
-    const request = new HttpApi.Request(event, { formDuplicateKeyMode: "array" });
-    expect(request.getInput("color")).toEqual(["red", "blue"]);
+    const request = new HttpApi.Request(event);
+    expect(request.getInput("color")).toBe("blue");
     expect(request.getInput("single")).toBe("one");
     expect(request.getInput("missing", "default")).toBe("default");
   });
