@@ -64,10 +64,8 @@ export class HttpApiRequest extends BaseRequest<ProxyEventV2 | ProxyEventV2WithJ
 
     for (const key of params.keys()) {
       const allValues = params.getAll(key);
-      const last = allValues.at(-1);
-      if (last !== null && last !== undefined) {
-        map[key] = last;
-      }
+      if (allValues.length === 0) continue;
+      map[key] = allValues.join(",");
     }
 
     return map;

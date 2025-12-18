@@ -65,13 +65,15 @@ describe("path parameters", () => {
     const event = makeRestEvent({ pathParameters: { id: "123" } });
     const request = new RestApi.Request(event);
     expect(request.getPathParam("id")).toBe("123");
-    expect(request.getPathParam("missing", "fallback")).toBe("fallback");
+    expect(request.getPathParam("missing", "n/a")).toBe("n/a");
+    expect(request.getPathParam("missing")).toBeUndefined();
   });
 
   it("reads path params for HTTP API", () => {
     const event = makeHttpEvent({ pathParameters: { slug: "abc" } });
     const request = new HttpApi.Request(event);
     expect(request.getPathParam("slug")).toBe("abc");
+    expect(request.getPathParam("missing", "n/a")).toBe("n/a");
     expect(request.getPathParam("missing")).toBeUndefined();
   });
 });
@@ -83,26 +85,28 @@ describe("query strings", () => {
       queryStringParameters: { search: "single", other: "one" },
     });
     const request = new RestApi.Request(event);
-    expect(request.getQueryStr("search")).toBe("second");
+    expect(request.getQueryStr("search")).toBe("first,second");
     expect(request.getQueryStrs(["search", "other"])).toEqual({
-      search: "second",
+      search: "first,second",
       other: "one",
     });
+    expect(request.getQueryStr("missing", "n/a")).toBe("n/a");
+    expect(request.getQueryStrs(["missing"], "n/a")).toEqual({ missing: "n/a" });
   });
 
   it("reconstructs multi-values from rawQueryString in payload v2.0", () => {
     const event = makeHttpEvent({
-      rawPath: "/users",
       rawQueryString: "filter=one&filter=two&single=only",
       queryStringParameters: { filter: "one,two", single: "only" },
     });
     const request = new HttpApi.Request(event);
-    expect(request.getQueryStr("filter")).toBe("two");
+    expect(request.getQueryStr("filter")).toBe("one,two");
     expect(request.getQueryStrs(["filter", "single"])).toEqual({
-      filter: "two",
+      filter: "one,two",
       single: "only",
     });
-    expect(request.getQueryStr("single")).toBe("only");
+    expect(request.getQueryStr("missing", "n/a")).toBe("n/a");
+    expect(request.getQueryStrs(["missing"], "n/a")).toEqual({ missing: "n/a" });
   });
 });
 
@@ -115,6 +119,11 @@ describe("body parsing", () => {
     });
     const request = new RestApi.Request(event);
     expect(request.getInput("hello")).toBe("world");
+    expect(request.getInputs(["hello", "count", "missing"], "n/a")).toEqual({
+      hello: "world",
+      count: 2,
+      missing: "n/a",
+    });
     expect(request.getJsonBody()).toEqual(payload);
   });
 
@@ -137,7 +146,12 @@ describe("body parsing", () => {
     const request = new HttpApi.Request(event);
     expect(request.getInput("color")).toBe("blue");
     expect(request.getInput("single")).toBe("one");
-    expect(request.getInput("missing", "default")).toBe("default");
+    expect(request.getInput("missing", "n/a")).toBe("n/a");
+    expect(request.getInputs(["color", "single", "missing"], "n/a")).toEqual({
+      color: "blue",
+      single: "one",
+      missing: "n/a",
+    });
   });
 
   it("decodes base64 bodies before parsing", () => {

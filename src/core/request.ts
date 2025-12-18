@@ -81,11 +81,8 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
   }
 
   getRawBody(): string | undefined {
-    const bodyValue = (this.event as { body?: string | null }).body;
-    if (bodyValue === undefined || bodyValue === null) {
-      return undefined;
-    }
-    if (bodyValue === "") {
+    const bodyValue = this.event.body;
+    if (bodyValue === undefined || bodyValue === null || bodyValue === "") {
       return undefined;
     }
 

@@ -48,8 +48,7 @@ export class RestApiRequest extends BaseRequest<ProxyEventV1 | ProxyEventV1WithC
   protected getQueryParamValue(key: string): string | undefined {
     const multiValues = this.event.multiValueQueryStringParameters;
     if (multiValues?.[key] && multiValues[key].length > 0) {
-      const last = multiValues[key].at(-1);
-      return last ?? undefined;
+      return multiValues[key].join(",");
     }
 
     const singles = this.event.queryStringParameters ?? undefined;
