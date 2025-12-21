@@ -2,7 +2,7 @@ import { UnsupportedEventError } from "../core/errors.js";
 import type { AnyProxyEvent, EventKind } from "../core/types.js";
 
 export function detectEventKind(event: AnyProxyEvent): EventKind {
-  if ((event as { version?: string }).version === "2.0" || "rawPath" in event) {
+  if (("version" in event && event.version === "2.0") || "rawPath" in event) {
     return "v2";
   }
 
