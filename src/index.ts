@@ -4,7 +4,7 @@ import { Response as RestApiResponse } from "./response/rest-api.js";
 import { Response as HttpApiResponse } from "./response/http-api.js";
 
 export { detectEventKind } from "./adapters/detect.js";
-export { UnsupportedEventError, BodyParseError } from "./core/errors.js";
+export { UnsupportedEventError, BodyParseError, ValidationError } from "./core/errors.js";
 export { RestApiRequest } from "./adapters/rest-api-request.js";
 export { HttpApiRequest } from "./adapters/http-api-request.js";
 export type {
@@ -14,6 +14,7 @@ export type {
   ProxyEventV2,
   ProxyEventV1WithCognitoAuthorizer,
   ProxyEventV2WithJWTAuthorizer,
+  Validator,
 } from "./core/types.js";
 export type { Request } from "./core/request.js";
 
@@ -26,3 +27,5 @@ export const HttpApi = {
   Request: HttpApiRequest,
   Response: HttpApiResponse,
 };
+
+export { createJoiValidator } from "./validators/joi.js";

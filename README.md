@@ -34,7 +34,9 @@ import type { AnyProxyEvent } from "aws-lambda-events";
 export async function handler(event: AnyProxyEvent) {
   // Pick the right wrapper yourself based on your API Gateway setup.
   const request =
-    event.version === "2.0" ? new HttpApi.Request(event) : new RestApi.Request(event);
+    (event as any).version === "2.0"
+      ? new HttpApi.Request(event as any)
+      : new RestApi.Request(event as any);
 
   const pathId = request.getPathParam("id", "n/a");
 
@@ -44,10 +46,7 @@ export async function handler(event: AnyProxyEvent) {
   const bodyTitle = request.getInput("title", "n/a");
   const bodyInputs = request.getInputs(["title", "status"]);
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ pathId, query, queryMap, bodyTitle, bodyInputs }),
-  };
+  return HttpApi.Response.json({ pathId, query, queryMap, bodyTitle, bodyInputs });
 }
 ```
 
@@ -76,6 +75,66 @@ export async function handler(event: AnyProxyEvent) {
 ### `getInputs(keys, defaultValue?)`
 - Takes an array of body field keys and returns a map `{ [key]: value | undefined }`.
 - Each value follows the same rules as `getInput` (default when missing).
+
+### `validate(validator)`
+- Validates the request body using a validator instance.
+- Returns the validated body (potentially transformed by the validator).
+- Throws `ValidationError` if validation fails.
+
+---
+
+## Validation
+
+The library supports request body validation using validator adapters. Currently supports Joi.
+
+### Installing Joi
+
+Validation requires Joi. Install it separately if you need validation:
+
+```bash
+npm install joi
+# or
+yarn add joi
+```
+
+**Recommended:** Joi v17+, but older versions (v16+) may also work.
+
+### Basic Usage with Joi
+
+```typescript
+import Joi from "joi";
+import { RestApi, createJoiValidator, ValidationError } from "aws-lambda-events";
+
+const schema = Joi.object({
+  title: Joi.string().min(3).max(100).required(),
+  content: Joi.string().required(),
+  tags: Joi.array().items(Joi.string()).optional(),
+});
+
+export async function handler(event: any) {
+  const request = new RestApi.Request(event);
+
+  try {
+    const validator = createJoiValidator(schema);
+    const body = request.validate(validator);
+    
+    // body is validated and type-safe
+    return RestApi.Response.json({ success: true, data: body }, 201);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return RestApi.Response.json(
+        {
+          error: "Validation failed",
+          message: error.message,
+          details: error.details,
+        },
+        400
+      );
+    }
+    throw error;
+  }
+}
+```
 
 ---
 

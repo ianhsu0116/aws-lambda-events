@@ -11,3 +11,13 @@ export class BodyParseError extends Error {
     this.name = "BodyParseError";
   }
 }
+
+export class ValidationError extends Error {
+  public readonly details?: unknown;
+
+  constructor(message = "Validation failed", details?: unknown) {
+    super(message);
+    this.name = "ValidationError";
+    this.details = details;
+  }
+}
