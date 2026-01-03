@@ -1,5 +1,5 @@
-import { BodyParseError } from "./errors.js";
-import type { AnyProxyEvent } from "./types.js";
+import { BodyParseError, ValidationError } from "./errors.js";
+import type { AnyProxyEvent, Validator } from "./types.js";
 
 type ParsedBody =
   | { kind: "empty" }
@@ -18,6 +18,7 @@ export interface Request {
   getPath(): string | undefined;
   getRawBody(): string | undefined;
   getJsonBody<T = unknown>(): T | undefined;
+  validate<T = unknown>(validator: Validator<T>): T;
 }
 
 export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
@@ -149,5 +150,19 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
     }
 
     return result;
+  }
+
+  validate<T = unknown>(validator: Validator<T>): T {
+    const body = this.getJsonBody();
+
+    try {
+      return validator.validate(body);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : "Validation failed";
+      throw new ValidationError(message, error);
+    }
   }
 }
