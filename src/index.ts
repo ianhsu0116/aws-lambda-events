@@ -29,3 +29,4 @@ export const HttpApi = {
 };
 
 export { createJoiValidator } from "./validators/joi.js";
+export { createZodValidator } from "./validators/zod.js";

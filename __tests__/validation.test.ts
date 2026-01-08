@@ -1,5 +1,6 @@
 import Joi from "joi";
-import { createJoiValidator, RestApi, ValidationError } from "../src/index.js";
+import { z } from "zod";
+import { createJoiValidator, createZodValidator, RestApi, ValidationError } from "../src/index.js";
 import type { ProxyEventV1 } from "../src/core/types.js";
 
 function makeRestEvent(overrides: Partial<ProxyEventV1> = {}): ProxyEventV1 {
@@ -20,7 +21,7 @@ function makeRestEvent(overrides: Partial<ProxyEventV1> = {}): ProxyEventV1 {
   };
 }
 
-describe("request.validate()", () => {
+describe("request.validate() with Joi", () => {
   const schema = Joi.object({
     name: Joi.string().required(),
     age: Joi.number().min(0).required(),
@@ -122,5 +123,90 @@ describe("request.validate()", () => {
       const details = (error as ValidationError).details as any[];
       expect(details.length).toBe(1);
     }
+  });
+});
+
+
+describe("request.validate() with Zod", () => {
+  const schema = z.object({
+    name: z.string(),
+    age: z.number().min(0),
+    email: z.email().optional(),
+  });
+
+  it("validates valid body successfully", () => {
+    const payload = { name: "Alice", age: 30, email: "alice@example.com" };
+    const event = makeRestEvent({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const request = new RestApi.Request(event);
+    const validator = createZodValidator(schema);
+    const validated = request.validate(validator);
+
+    expect(validated).toEqual(payload);
+  });
+
+  it("throws ValidationError on missing required field", () => {
+    const payload = { name: "Bob" };
+    const event = makeRestEvent({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const request = new RestApi.Request(event);
+    const validator = createZodValidator(schema);
+
+    expect(() => request.validate(validator)).toThrow(ValidationError);
+  });
+
+  it("throws ValidationError on invalid field value", () => {
+    const payload = { name: "Charlie", age: -5 };
+    const event = makeRestEvent({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const request = new RestApi.Request(event);
+    const validator = createZodValidator(schema);
+
+    expect(() => request.validate(validator)).toThrow(ValidationError);
+  });
+
+  it("provides validation details in error", () => {
+    const payload = { age: 25 };
+    const event = makeRestEvent({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const request = new RestApi.Request(event);
+    const validator = createZodValidator(schema);
+
+    try {
+      request.validate(validator);
+      fail("Should have thrown ValidationError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValidationError);
+      expect((error as ValidationError).details).toBeDefined();
+      expect((error as ValidationError).message).toContain("Validation failed");
+    }
+  });
+
+  it("strips unknown fields by default", () => {
+    const payload = { name: "Dave", age: 25, unknown: "data" };
+    const event = makeRestEvent({
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const request = new RestApi.Request(event);
+    // Zod strips unknown keys by default
+    const validator = createZodValidator(schema);
+    const validated = request.validate(validator);
+
+    expect(validated).toEqual({ name: "Dave", age: 25 });
+    expect(validated).not.toHaveProperty("unknown");
   });
 });
