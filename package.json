@@ -1,6 +1,6 @@
 {
   "name": "aws-lambda-events",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Lightweight helpers to normalize API Gateway proxy events (v1.0 and v2.0) for AWS Lambda.",
   "target": "ES2019",
   "module": "CommonJS",
