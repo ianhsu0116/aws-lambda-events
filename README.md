@@ -76,7 +76,11 @@ export async function handler(event: AnyProxyEvent) {
 - Takes an array of body field keys and returns a map `{ [key]: value | undefined }`.
 - Each value follows the same rules as `getInput` (default when missing).
 
-### `validate(validator)`
+### `getRequestTimeEpoch()`
+- Returns the event trigger time as a Unix timestamp in milliseconds.
+- Returns `undefined` if the time field is not available.
+
+### `validate(validator, source)`
 - Validates the request body using a validator instance.
 - Returns the validated body (potentially transformed by the validator).
 - Throws `ValidationError` if validation fails.

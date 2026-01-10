@@ -27,3 +27,5 @@ export type EventKind = "v1" | "v2";
 export interface Validator<T = unknown> {
   validate(value: unknown): T;
 }
+
+export type ValidationSource = "body" | "query" | "path";

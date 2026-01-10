@@ -166,3 +166,43 @@ describe("body parsing", () => {
     expect(request.getJsonBody()).toEqual(payload);
   });
 });
+
+describe("request time", () => {
+  it("reads timeEpoch for HTTP API (V2)", () => {
+    const event = makeHttpEvent({
+      requestContext: {
+        accountId: "",
+        apiId: "",
+        domainName: "",
+        domainPrefix: "",
+        http: { method: "GET", path: "/", protocol: "HTTP/1.1", sourceIp: "", userAgent: "" },
+        requestId: "",
+        routeKey: "$default",
+        stage: "$default",
+        time: "09/Apr/2015:12:34:56 +0000",
+        timeEpoch: 1428582896000,
+      },
+    });
+    const request = new HttpApi.Request(event);
+    expect(request.getRequestTimeEpoch()).toBe(1428582896000);
+  });
+
+  it("reads requestTimeEpoch for REST API (V1)", () => {
+    const event = makeRestEvent({
+      requestContext: {
+        requestTimeEpoch: 1428582896000,
+      } as any,
+    });
+    const request = new RestApi.Request(event);
+    expect(request.getRequestTimeEpoch()).toBe(1428582896000);
+  });
+
+  it("returns undefined when requestContext is missing time fields", () => {
+    const event = makeRestEvent({
+      requestContext: {} as any,
+    });
+    const request = new RestApi.Request(event);
+    expect(request.getRequestTimeEpoch()).toBeUndefined();
+  });
+});
+

@@ -1,5 +1,5 @@
 import { BodyParseError, ValidationError } from "./errors.js";
-import type { AnyProxyEvent, Validator } from "./types.js";
+import type { AnyProxyEvent, ValidationSource, Validator } from "./types.js";
 
 type ParsedBody =
   | { kind: "empty" }
@@ -18,7 +18,8 @@ export interface Request {
   getPath(): string | undefined;
   getRawBody(): string | undefined;
   getJsonBody<T = unknown>(): T | undefined;
-  validate<T = unknown>(validator: Validator<T>): T;
+  getRequestTimeEpoch(): number | undefined;
+  validate<T = unknown>(validator: Validator<T>, source: ValidationSource): T;
 }
 
 export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
@@ -102,6 +103,23 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
     return undefined;
   }
 
+  getRequestTimeEpoch(): number | undefined {
+    const ctx = this.event.requestContext;
+    if (!ctx) return undefined;
+
+    // V2 events use timeEpoch
+    if ("timeEpoch" in ctx && typeof ctx.timeEpoch === "number") {
+      return ctx.timeEpoch;
+    }
+
+    // V1 events use requestTimeEpoch
+    if ("requestTimeEpoch" in ctx && typeof ctx.requestTimeEpoch === "number") {
+      return ctx.requestTimeEpoch;
+    }
+
+    return undefined;
+  }
+
   protected abstract headerLookup(normalizedHeaderName: string): string | undefined;
   protected abstract getQueryParamValue(key: string): string | undefined;
 
@@ -152,11 +170,23 @@ export abstract class BaseRequest<E extends AnyProxyEvent> implements Request {
     return result;
   }
 
-  validate<T = unknown>(validator: Validator<T>): T {
-    const body = this.getJsonBody();
+  validate<T = unknown>(validator: Validator<T>, source: ValidationSource): T {
+    let data: unknown;
+
+    switch (source) {
+      case "body":
+        data = this.getJsonBody();
+        break;
+      case "query":
+        data = this.event.queryStringParameters ?? {};
+        break;
+      case "path":
+        data = this.event.pathParameters ?? {};
+        break;
+    }
 
     try {
-      return validator.validate(body);
+      return validator.validate(data);
     } catch (error) {
       if (error instanceof ValidationError) {
         throw error;

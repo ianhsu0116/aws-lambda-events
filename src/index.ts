@@ -14,6 +14,7 @@ export type {
   ProxyEventV2,
   ProxyEventV1WithCognitoAuthorizer,
   ProxyEventV2WithJWTAuthorizer,
+  ValidationSource,
   Validator,
 } from "./core/types.js";
 export type { Request } from "./core/request.js";
