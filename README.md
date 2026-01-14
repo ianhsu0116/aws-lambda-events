@@ -81,15 +81,19 @@ export async function handler(event: AnyProxyEvent) {
 - Returns `undefined` if the time field is not available.
 
 ### `validate(validator, source)`
-- Validates the request body using a validator instance.
-- Returns the validated body (potentially transformed by the validator).
+- Validates request data using a validator instance.
+- `source` specifies which part of the request to validate:
+  - `"body"` – validates the JSON body (`getJsonBody()`).
+  - `"query"` – validates query string parameters.
+  - `"path"` – validates path parameters.
+- Returns the validated data (potentially transformed by the validator).
 - Throws `ValidationError` if validation fails.
 
 ---
 
 ## Validation
 
-The library supports request body validation using validator adapters. Currently supports **Joi** and **Zod**.
+The library supports request validation using validator adapters. Validate body, query, or path parameters. Currently supports **Joi** and **Zod**.
 
 ### Option A: Using Joi
 
@@ -116,7 +120,7 @@ The library supports request body validation using validator adapters. Currently
 
      try {
        const validator = createJoiValidator(schema);
-       const body = request.validate(validator);
+       const body = request.validate(validator, "body");
        
        // body is validated and type-safe
        return RestApi.Response.json({ success: true, data: body }, 201);
@@ -157,7 +161,7 @@ The library supports request body validation using validator adapters. Currently
 
      try {
        const validator = createZodValidator(schema);
-       const body = request.validate(validator);
+       const body = request.validate(validator, "body");
        
        // body is validated and inferred from Zod schema
        return RestApi.Response.json({ success: true, data: body }, 201);
